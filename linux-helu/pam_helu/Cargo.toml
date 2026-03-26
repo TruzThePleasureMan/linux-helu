@@ -1,0 +1,15 @@
+[package]
+name = "pam_helu"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+zbus = { version = "5.14.0", features = ["tokio"] }
+tokio = { version = "1.50.0", features = ["full"] }
+anyhow = "1.0"
+tracing = "0.1"
+tracing-subscriber = "0.3"
+pamsm = { version = "0.5.5", features = ["libpam"] }

@@ -1,0 +1,16 @@
+[Unit]
+Description=Linux Helu Authentication Daemon
+After=dbus.service
+Requires=dbus.service
+
+[Service]
+Type=dbus
+BusName=net.helu.Auth
+ExecStart=/usr/bin/helud
+Restart=on-failure
+ProtectSystem=strict
+ProtectHome=read-only
+ReadWritePaths=/var/lib/helu /run/helu
+
+[Install]
+WantedBy=multi-user.target
