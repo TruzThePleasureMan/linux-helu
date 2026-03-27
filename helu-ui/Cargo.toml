@@ -7,7 +7,7 @@ edition = "2021"
 gtk4 = { version = "0.9.0", features = ["v4_12"] }
 libadwaita = { version = "0.7.0", features = ["v1_4"] }
 gtk4-layer-shell = "0.4.0"
-zbus = { version = "4", default-features = false, features = ["tokio"] }
+zbus = { version = "5.14.0", default-features = false, features = ["tokio"] }
 tokio = { version = "1", features = ["full"] }
 cairo-rs = "0.20"
 helu-common = { path = "../helu-common" }

@@ -26,3 +26,34 @@ If no TPM is present on the system, the platform falls back to software key deri
 ### Cosine Similarity & Thresholds
 Embeddings are L2 normalized, allowing cosine similarity to be calculated easily as a simple dot product.
 Thresholds for a match typically range from 0.5 to 0.7. Lower thresholds imply a stricter match. The default value is configurable in `helu.toml`.
+
+## Network Authentication Flow
+
+```
+┌─────────────┐     POST /auth/challenge      ┌──────────────┐
+│  VPN / App  │ ────────────────────────────► │ helu-server  │
+│  (client)   │                               │   (axum)     │
+│             │ ◄──────────────────────────── │              │
+│             │     { challenge_id, nonce }   │              │
+│             │                               │      │       │
+│             │     POST /auth/verify         │      │ D-Bus │
+│             │ ────────────────────────────► │      │       │
+│             │                               │      ▼       │
+│             │                               │    helud     │
+│             │                               │      │       │
+│             │                               │      ▼       │
+│             │                               │   helu-ui    │
+│             │                               │  (biometric) │
+│             │     { JWT }                   │      │       │
+│             │ ◄──────────────────────────── │      │       │
+└─────────────┘                               └──────────────┘
+```
+
+**Note:** Currently, `helu-server` assumes local D-Bus IPC to `helud` in an "auth node" model. The server directly blocks and awaits the return values from the `Authenticate` method call without the complexity of a background task for signals. A future architecture could have `helu-server` trigger auth remotely via a lightweight gRPC call.
+
+## Why Not RADIUS
+- RADIUS was designed in 1991 for dial-up modem pools
+- Uses UDP with weak MD5-based auth
+- No native biometric support
+- No modern token format
+- helu-server uses HTTPS, Argon2, JWT, and biometric-gated issuance
