@@ -39,6 +39,9 @@ impl HeluAuth {
         }
 
         let mut mgr = manager.lock().await;
+
+        // If it's specifically face auth, we can use authenticate_result to potentially get more granular details.
+        // For standard authenticate call we fall back to bools.
         let result = mgr.authenticate(&username, &method).await;
 
         match result {

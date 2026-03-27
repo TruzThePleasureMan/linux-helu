@@ -67,9 +67,11 @@ You can run the stack using session D-Bus and mocked hardware:
 5. Test with CLI: `cargo run --bin helu-cli test`
 
 ## Known Edges
-- **Face Model**: You must provide `mobilefacenet.onnx` from the InsightFace repository and configure its path. It is not bundled in the repo.
 - **`HELU_MOCK_PIN`**: Removed. PIN authentication fallback in PAM handles verification locally and passes the PIN over D-Bus via `AuthenticateWithCredential`.
 - **UI Startup Grace Period**: Previously `pam_helu` had a race condition firing before `helu-ui` was fully awake. This is now mitigated via a 3-second UI readiness check and polling of the session bus.
+
+## TPM2 Crypto Model
+Face embeddings are strictly encrypted locally with AES-256-GCM. The AES key is sealed into the system's TPM2 hardware under the owner hierarchy, using a policy bound to PCRs 0, 1, and 7. If hardware TPM is unavailable, `helud` falls back to software derivation via HKDF-SHA256 of the machine ID and a random salt (though this compromises absolute hardware security guarantees). See `ARCHITECTURE.md` for more details.
 
 ## Coding Conventions
 - Use `anyhow` for daemon/server error handling, but implement specific error codes where D-Bus needs them.

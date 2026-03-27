@@ -10,11 +10,17 @@ directories = "6.0.0"
 hex = "0.4.3"
 image = "0.25.10"
 ndarray = "0.17.2"
-ort = "2.0.0-rc.12"
+ort = { version = "2.0.0-rc.12", features = ["cuda", "tensorrt"] }
+nokhwa = { version = "0.10", features = ["input-v4l", "output-threaded"] }
+aes-gcm = "0.10"
+rand = "0.8"
+postcard = { version = "1.0", features = ["alloc", "use-std"] }
 serde = { version = "1.0.228", features = ["derive"] }
 sha2 = "0.11.0"
 tokio = { version = "1.50.0", features = ["full"] }
 toml = "1.1.0"
 tracing = "0.1.44"
 tracing-subscriber = "0.3.23"
+tss-esapi = "7.6.0"
 zbus = { version = "5.14.0", features = ["tokio"] }
+helu-common = { version = "0.1.0", path = "../helu-common" }

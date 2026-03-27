@@ -1,6 +1,9 @@
 mod config;
 mod dbus;
 mod auth;
+mod ml;
+mod crypto;
+mod enrollment;
 
 use clap::Parser;
 use std::sync::Arc;
@@ -45,7 +48,7 @@ async fn main() -> Result<()> {
     let mut auth_manager = auth::AuthManager::new();
 
     if conf.face.enabled {
-        auth_manager.register_method(Box::new(auth::face::FaceAuth::new(conf.face.clone())));
+        auth_manager.register_method(Box::new(auth::face::FaceAuth::new(conf.face.clone(), conf.crypto.clone())));
     }
     if conf.fingerprint.enabled {
         auth_manager.register_method(Box::new(auth::fingerprint::FingerprintAuth::new(conf.fingerprint.clone())));
