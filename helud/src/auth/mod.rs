@@ -5,10 +5,15 @@ pub mod fido2;
 
 use anyhow::Result;
 use std::collections::HashMap;
+use tracing::info;
 
 pub trait AuthMethod {
     fn name(&self) -> &'static str;
     fn authenticate(&self, username: &str) -> Result<bool>;
+    fn authenticate_with_credential(&self, username: &str, _credential: &str) -> Result<bool> {
+        // By default, fall back to standard authenticate if credential is not expected
+        self.authenticate(username)
+    }
     fn enroll(&mut self, username: &str) -> Result<bool>;
 }
 
@@ -30,20 +35,24 @@ impl AuthManager {
     pub async fn authenticate(&mut self, username: &str, method: &str) -> Result<bool> {
         if method == "auto" {
             // Try Face -> Fingerprint -> PIN
-            if let Some(m) = self.methods.get("face") {
-                if m.authenticate(username)? { return Ok(true); }
-            }
-            if let Some(m) = self.methods.get("fingerprint") {
-                if m.authenticate(username)? { return Ok(true); }
-            }
-            if let Some(m) = self.methods.get("pin") {
-                if m.authenticate(username)? { return Ok(true); }
-            }
+            if self.methods.get("face").is_some_and(|m| m.authenticate(username).unwrap_or(false)) { return Ok(true); }
+            if self.methods.get("fingerprint").is_some_and(|m| m.authenticate(username).unwrap_or(false)) { return Ok(true); }
+            if self.methods.get("pin").is_some_and(|m| m.authenticate(username).unwrap_or(false)) { return Ok(true); }
             Ok(false)
         } else if let Some(m) = self.methods.get(method) {
             m.authenticate(username)
         } else {
             anyhow::bail!("Method not found")
+        }
+    }
+
+    pub async fn authenticate_with_credential(&mut self, username: &str, method: &str, credential: &str) -> Result<bool> {
+        info!("Authenticating {} via {} with credential", username, method);
+
+        if let Some(m) = self.methods.get(method) {
+            m.authenticate_with_credential(username, credential)
+        } else {
+            Err(anyhow::anyhow!("Unknown auth method: {}", method))
         }
     }
 

@@ -9,7 +9,8 @@ Linux Helu provides a unified, production-grade biometric authentication experie
 - **`helud`**: The core daemon running on D-Bus. Handles auth requests, configuration, and biometric verification logic.
 - **`pam_helu`**: A C-compatible PAM library (`pam_sm_authenticate`) that forwards auth requests to `helud`.
 - **`helu-cli`**: Command-line tool for enrolling biometric data and checking system status.
-- **`helu-ui`**: A Tauri + Svelte frontend providing the lockscreen and enrollment "Windows Hello-style" UI.
+- **`helu-ui`**: GTK4 system overlay, layer-shell, Rust only, no web tech. Provides the lockscreen and auth UI.
+- **`helu-setup`**: Tauri + Svelte, normal app window, enrollment only.
 - **`helu-server`**: A lightweight network server that functions as a RADIUS replacement, issuing biometric challenges and verifying JWTs.
 
 ## Architecture & Auth Flow
@@ -39,6 +40,7 @@ Linux Helu provides a unified, production-grade biometric authentication experie
 Exposed by `helud`.
 - **Methods:**
   - `Authenticate(username: String, method: String) -> (success: Bool, message: String)`
+  - `AuthenticateWithCredential(username: String, method: String, credential: String) -> (success: Bool, message: String)`
   - `Enroll(username: String, method: String) -> (success: Bool)`
   - `ListMethods(username: String) -> (methods: Array<String>)`
   - `Status() -> (daemon_version: String, loaded_methods: Array<String>)`
@@ -50,19 +52,24 @@ Exposed by `helud`.
 ## Key Design Decisions
 - **ONNX Runtime (`ort`)**: Chosen over PyTorch/TensorFlow C++ for a lightweight, dependency-free CPU inference pipeline. Allows bundling mobile face models directly without CUDA bloat.
 - **zbus**: The canonical Rust D-Bus library. Simple, safe, and macro-driven.
-- **Tauri**: Provides a cross-platform, web-tech UI (Svelte) with a Rust backend that can natively speak D-Bus, avoiding the nightmare of GTK4/Qt C++ bindings for a simple window.
+- **Tauri**: Provides a cross-platform, web-tech UI (Svelte) for the enrollment app (`helu-setup`) with a Rust backend that can natively speak D-Bus.
+- **GTK4/layer-shell**: Used for `helu-ui` to allow it to be a true system overlay behaving like a lockscreen on both X11 and Wayland.
+
+## Runtime Wayland Detection
+Note the runtime Wayland detection pattern as a key convention in the codebase. `gtk4_layer_shell::is_supported()` must always be checked before calling any layer shell API.
 
 ## Running Locally for Development
 You can run the stack using session D-Bus and mocked hardware:
 1. Ensure your config uses `bus = "session"` and `--mock` hardware flags.
 2. Start the daemon: `cargo run --bin helud`
-3. Run the UI: `cd helu-ui && npm run tauri dev`
-4. Test with CLI: `cargo run --bin helu-cli test`
+3. Run the setup UI: `cd helu-setup && npm run tauri dev`
+4. Run the auth UI (mocked): `cargo run --bin helu-ui -- --mock`
+5. Test with CLI: `cargo run --bin helu-cli test`
 
 ## Known Edges & TODOs
-- **Wayland**: Undecorated, always-on-top, centered windows in Wayland require specific compositor protocols (`layer-shell`). Tauri currently treats it as a standard window.
 - **Face Model**: You must provide `mobilefacenet.onnx` from the InsightFace repository and configure its path. It is not bundled in the repo.
-- **Race Condition**: `pam_helu` firing before `helu-ui` is fully awake if it isn't running as a background service.
+- **`HELU_MOCK_PIN`**: Removed. PIN authentication fallback in PAM handles verification locally and passes the PIN over D-Bus via `AuthenticateWithCredential`.
+- **UI Startup Grace Period**: Previously `pam_helu` had a race condition firing before `helu-ui` was fully awake. This is now mitigated via a 3-second UI readiness check and polling of the session bus.
 
 ## Coding Conventions
 - Use `anyhow` for daemon/server error handling, but implement specific error codes where D-Bus needs them.

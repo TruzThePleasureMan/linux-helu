@@ -1,0 +1,25 @@
+.helu-ring {
+    /* Handled by Cairo */
+}
+
+.helu-greeting {
+    font-size: 2em;
+    font-weight: 300;
+}
+
+.helu-status {
+    font-size: 1em;
+    opacity: 0.7;
+}
+
+.helu-pinpad button {
+    min-width: 60px;
+    min-height: 60px;
+    font-size: 1.4em;
+}
+
+/* Default to dark mode if libadwaita isn't available */
+window {
+    background-color: #1a1a2e;
+    color: white;
+}

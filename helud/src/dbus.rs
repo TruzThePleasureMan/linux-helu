@@ -1,5 +1,5 @@
 use zbus::interface;
-use zbus::object_server::SignalContext;
+use zbus::object_server::SignalEmitter;
 use std::sync::Arc;
 use tokio::sync::Mutex;
 use crate::config::Config;
@@ -7,6 +7,7 @@ use crate::auth::AuthManager;
 use tracing::{info, error};
 
 pub struct HeluAuth {
+    #[allow(dead_code)]
     config: Arc<Config>,
     auth_manager: Arc<Mutex<AuthManager>>,
 }
@@ -24,7 +25,7 @@ impl HeluAuth {
 impl HeluAuth {
     async fn authenticate(
         &self,
-        #[zbus(signal_context)] ctxt: SignalContext<'_>,
+        #[zbus(signal_context)] ctxt: SignalEmitter<'_>,
         username: String,
         method: String,
     ) -> (bool, String) {
@@ -39,6 +40,48 @@ impl HeluAuth {
 
         let mut mgr = manager.lock().await;
         let result = mgr.authenticate(&username, &method).await;
+
+        match result {
+            Ok(true) => {
+                if let Err(e) = HeluAuth::auth_success(&ctxt, &username, &method).await {
+                    error!("Failed to emit AuthSuccess signal: {}", e);
+                }
+                (true, "Authentication successful".to_string())
+            }
+            Ok(false) => {
+                if let Err(e) = HeluAuth::auth_failure(&ctxt, &username, "Authentication failed".to_string()).await {
+                    error!("Failed to emit AuthFailure signal: {}", e);
+                }
+                (false, "Authentication failed".to_string())
+            }
+            Err(e) => {
+                let msg = format!("Error during auth: {}", e);
+                if let Err(e2) = HeluAuth::auth_failure(&ctxt, &username, msg.clone()).await {
+                    error!("Failed to emit AuthFailure signal: {}", e2);
+                }
+                (false, msg)
+            }
+        }
+    }
+
+    async fn authenticate_with_credential(
+        &self,
+        #[zbus(signal_context)] ctxt: SignalEmitter<'_>,
+        username: String,
+        method: String,
+        credential: String,
+    ) -> (bool, String) {
+        info!("Auth request for {} via {} with credential", username, method);
+
+        let manager = self.auth_manager.clone();
+
+        // Emit AuthRequested signal
+        if let Err(e) = HeluAuth::auth_requested(&ctxt, &username, &method).await {
+            error!("Failed to emit AuthRequested signal: {}", e);
+        }
+
+        let mut mgr = manager.lock().await;
+        let result = mgr.authenticate_with_credential(&username, &method, &credential).await;
 
         match result {
             Ok(true) => {
@@ -84,11 +127,11 @@ impl HeluAuth {
 
     // Signals
     #[zbus(signal)]
-    async fn auth_requested(ctxt: &SignalContext<'_>, username: &str, method: &str) -> zbus::Result<()>;
+    async fn auth_requested(ctxt: &SignalEmitter<'_>, username: &str, method: &str) -> zbus::Result<()>;
 
     #[zbus(signal)]
-    async fn auth_success(ctxt: &SignalContext<'_>, username: &str, method: &str) -> zbus::Result<()>;
+    async fn auth_success(ctxt: &SignalEmitter<'_>, username: &str, method: &str) -> zbus::Result<()>;
 
     #[zbus(signal)]
-    async fn auth_failure(ctxt: &SignalContext<'_>, username: &str, reason: String) -> zbus::Result<()>;
+    async fn auth_failure(ctxt: &SignalEmitter<'_>, username: &str, reason: String) -> zbus::Result<()>;
 }

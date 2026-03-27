@@ -4,6 +4,7 @@ members = [
     "helud",
     "pam_helu",
     "helu-cli",
-    "helu-ui/src-tauri",
-    "helu-server"
-]
+    "helu-setup/src-tauri",
+    "helu-server",
+    "helu-ui"
+, "helu-common"]
