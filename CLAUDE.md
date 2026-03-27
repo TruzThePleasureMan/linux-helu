@@ -40,6 +40,7 @@ Linux Helu provides a unified, production-grade biometric authentication experie
 Exposed by `helud`.
 - **Methods:**
   - `Authenticate(username: String, method: String) -> (success: Bool, message: String)`
+  - `AuthenticateWithCredential(username: String, method: String, credential: String) -> (success: Bool, message: String)`
   - `Enroll(username: String, method: String) -> (success: Bool)`
   - `ListMethods(username: String) -> (methods: Array<String>)`
   - `Status() -> (daemon_version: String, loaded_methods: Array<String>)`
@@ -67,7 +68,8 @@ You can run the stack using session D-Bus and mocked hardware:
 
 ## Known Edges & TODOs
 - **Face Model**: You must provide `mobilefacenet.onnx` from the InsightFace repository and configure its path. It is not bundled in the repo.
-- **Race Condition**: `pam_helu` firing before `helu-ui` is fully awake if it isn't running as a background service.
+- **`HELU_MOCK_PIN`**: Removed. PIN authentication fallback in PAM handles verification locally and passes the PIN over D-Bus via `AuthenticateWithCredential`.
+- **UI Startup Grace Period**: Previously `pam_helu` had a race condition firing before `helu-ui` was fully awake. This is now mitigated via a 3-second UI readiness check and polling of the session bus.
 
 ## Coding Conventions
 - Use `anyhow` for daemon/server error handling, but implement specific error codes where D-Bus needs them.

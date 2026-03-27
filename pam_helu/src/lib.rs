@@ -1,18 +1,13 @@
+pub mod dbus;
+pub mod fallback;
+
 use pamsm::{PamError, PamFlags, PamServiceModule, Pam, PamLibExt};
 use tokio::runtime::Runtime;
-use zbus::Connection;
-use tracing::{info, error, Level};
+use log::{info, error};
+use crate::dbus::{helud_available, check_ui_ready, call_authenticate};
+use crate::fallback::terminal_pin_fallback;
 
 struct PamHelu;
-
-#[zbus::proxy(
-    interface = "net.helu.Auth",
-    default_service = "net.helu.Auth",
-    default_path = "/net/helu/Auth"
-)]
-trait HeluAuth {
-    async fn authenticate(&self, username: String, method: String) -> zbus::Result<(bool, String)>;
-}
 
 impl PamServiceModule for PamHelu {
     fn setcred(
@@ -28,11 +23,10 @@ impl PamServiceModule for PamHelu {
         _flags: PamFlags,
         _args: Vec<String>,
     ) -> PamError {
-        let _ = tracing_subscriber::fmt()
-            .with_max_level(Level::INFO)
-            .try_init();
+        // Initialize syslog with LOG_AUTH
+        syslog::init(syslog::Facility::LOG_AUTH, log::LevelFilter::Info, Some("pam_helu")).ok();
 
-        info!("pam_helu triggered");
+        info!("pam_helu auth attempt started");
 
         let user = match pamh.get_user(None) {
             Ok(Some(u)) => match u.to_str() {
@@ -58,54 +52,39 @@ impl PamServiceModule for PamHelu {
             }
         };
 
-        let result = rt.block_on(async {
-            // First try system bus, then session bus as fallback (for dev)
-            let conn_res = Connection::system().await;
+        // 1. Check if helud is running on D-Bus
+        let is_helud_running = rt.block_on(helud_available());
+        if !is_helud_running {
+            error!("helud not running, falling back to terminal PIN immediately");
+            return terminal_pin_fallback(&pamh, &user);
+        }
 
-            let conn = match conn_res {
-                Ok(c) => {
-                    info!("Connected to D-Bus (system)");
-                    c
-                },
-                Err(_) => {
-                    match Connection::session().await {
-                        Ok(c) => {
-                            info!("Connected to D-Bus (session) fallback");
-                            c
-                        },
-                        Err(e) => {
-                            error!("Failed to connect to D-Bus: {}", e);
-                            return Err(PamError::AUTHINFO_UNAVAIL);
-                        }
-                    }
-                }
-            };
+        // 2. Check UI readiness
+        let is_ui_ready = rt.block_on(check_ui_ready());
+        if !is_ui_ready {
+            error!("UI not ready, falling back to terminal PIN");
+            return terminal_pin_fallback(&pamh, &user);
+        }
 
-            let proxy = match HeluAuthProxy::new(&conn).await {
-                Ok(p) => p,
-                Err(e) => {
-                    error!("Failed to create D-Bus proxy: {}", e);
-                    return Err(PamError::AUTHINFO_UNAVAIL);
-                }
-            };
+        info!("Calling helud: net.helu.Auth.Authenticate({}, auto)", user);
 
-            match proxy.authenticate(user.clone(), "auto".to_string()).await {
-                Ok((true, msg)) => {
-                    info!("Helud auth success: {}", msg);
-                    Ok(PamError::SUCCESS)
-                }
-                Ok((false, msg)) => {
-                    info!("Helud auth failed: {}", msg);
-                    Ok(PamError::AUTH_ERR)
-                }
-                Err(e) => {
-                    error!("Helud D-Bus call failed: {}", e);
-                    Ok(PamError::AUTHINFO_UNAVAIL)
-                }
+        // 3. Call helud authenticate with method "auto"
+        let result = rt.block_on(call_authenticate(&user, "auto"));
+
+        match result {
+            Ok((true, msg)) => {
+                info!("Helud auth success: {}", msg);
+                PamError::SUCCESS
             }
-        });
-
-        result.unwrap_or_else(|e| e)
+            Ok((false, msg)) => {
+                info!("Helud auth failed: {}", msg);
+                PamError::AUTH_ERR
+            }
+            Err(e) => {
+                error!("Helud D-Bus call failed: {}", e);
+                PamError::AUTH_ERR
+            }
+        }
     }
 }
 

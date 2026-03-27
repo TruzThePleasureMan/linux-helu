@@ -64,6 +64,19 @@ greeting = "Helu" # Change to "Hello" if you hate fun
 | ✅ Fallback mode, keep-above window | Mir |
 | 🤷 Untested. Good luck. | |
 
+## Testing Locally
+To test the PAM module locally:
+```bash
+# Build the module
+cargo build -p pam_helu
+
+# Copy to PAM module dir (requires root on real system)
+sudo cp target/debug/libpam_helu.so /lib/security/pam_helu.so
+
+# Test with pamtester (install via package manager)
+pamtester -v helu-test $USER authenticate
+```
+
 ## Known Issues
 "It's Linux."
 
