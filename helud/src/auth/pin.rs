@@ -39,20 +39,20 @@ impl AuthMethod for PinAuth {
     }
 
     fn authenticate(&self, username: &str) -> Result<bool> {
+        // Without credential, standard authenticate fails because it requires a PIN
+        tracing::info!("PIN auth requested for {} without credential, failing", username);
+        Ok(false)
+    }
+
+    fn authenticate_with_credential(&self, username: &str, credential: &str) -> Result<bool> {
         let path = self.pin_file_path(username)?;
         if !path.exists() {
             return Ok(false);
         }
 
         let stored_hash = fs::read_to_string(&path)?.trim().to_string();
-
-        // Mock implementation for now:
-        tracing::info!("PIN auth requested for {}", username);
-        if let Ok(env_pin) = std::env::var("HELU_MOCK_PIN") {
-            return Ok(self.hash_pin(&env_pin) == stored_hash);
-        }
-
-        Ok(false)
+        tracing::info!("PIN auth requested for {} with credential", username);
+        Ok(self.hash_pin(credential) == stored_hash)
     }
 
     fn enroll(&mut self, username: &str) -> Result<bool> {

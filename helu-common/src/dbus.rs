@@ -8,6 +8,7 @@ use crate::types::AuthState;
 )]
 pub trait Auth {
     fn authenticate(&self, username: &str, method: &str) -> zbus::Result<(bool, String)>;
+    fn authenticate_with_credential(&self, username: &str, method: &str, credential: &str) -> zbus::Result<(bool, String)>;
     fn enroll(&self, username: &str, method: &str) -> zbus::Result<bool>;
     fn list_methods(&self, username: &str) -> zbus::Result<Vec<String>>;
     fn status(&self) -> zbus::Result<(String, Vec<String>)>;
