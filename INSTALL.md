@@ -18,11 +18,9 @@ To test the D-Bus Daemon and UI interaction without touching your actual system 
    *The daemon will register itself as `net.helu.Auth` on the session bus.*
 
 2. **Start the Frontend UI (`helu-ui`)**
-   In another terminal, launch the Tauri UI:
+   In another terminal, launch the GTK4 UI:
    ```bash
-   cd helu-ui
-   npm install
-   npm run tauri dev
+   cargo run --bin helu-ui -- --mock
    ```
    *The UI will start hidden and listen for D-Bus auth signals from the daemon.*
 
@@ -32,6 +30,14 @@ To test the D-Bus Daemon and UI interaction without touching your actual system 
    cargo run --bin helu-cli -- test --method face
    ```
    *Watch the UI pop up, "scan" your mock face, and report success back to the daemon!*
+
+4. **Run the Setup Utility (`helu-setup`)**
+   To configure the system and enroll faces, you can run the separate Tauri setup app:
+   ```bash
+   cd helu-setup
+   npm install
+   npm run tauri dev
+   ```
 
 ## Real PAM Integration (Advanced)
 If you wish to test `pam_helu.so` in real scenarios, you need to configure D-Bus policy and install the module:
