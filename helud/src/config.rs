@@ -10,6 +10,8 @@ pub struct Config {
     #[serde(default)]
     pub face: FaceConfig,
     #[serde(default)]
+    pub crypto: CryptoConfig,
+    #[serde(default)]
     pub fingerprint: FingerprintConfig,
     #[serde(default)]
     pub pin: PinConfig,
@@ -44,6 +46,7 @@ pub struct FaceConfig {
     pub threshold: f32,
     pub camera_index: u32,
     pub mock_hardware: bool,
+    pub enrollment_frames: u32,
 }
 
 impl Default for FaceConfig {
@@ -54,6 +57,28 @@ impl Default for FaceConfig {
             threshold: 0.6,
             camera_index: 0,
             mock_hardware: true,
+            enrollment_frames: 5,
+        }
+    }
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct CryptoConfig {
+    pub tpm_device: String,
+    pub tpm_pcrs: Vec<u32>,
+    pub face_store_path: String,
+    pub sealed_key_path: String,
+    pub software_fallback: bool,
+}
+
+impl Default for CryptoConfig {
+    fn default() -> Self {
+        Self {
+            tpm_device: "/dev/tpmrm0".to_string(),
+            tpm_pcrs: vec![0, 1, 7],
+            face_store_path: "/var/lib/helu/faces".to_string(),
+            sealed_key_path: "/var/lib/helu/tpm_sealed_key".to_string(),
+            software_fallback: true,
         }
     }
 }

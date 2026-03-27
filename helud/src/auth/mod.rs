@@ -7,9 +7,19 @@ use anyhow::Result;
 use std::collections::HashMap;
 use tracing::info;
 
+use helu_common::types::AuthResult;
+
 pub trait AuthMethod {
     fn name(&self) -> &'static str;
     fn authenticate(&self, username: &str) -> Result<bool>;
+    #[allow(dead_code)]
+    fn authenticate_result(&self, username: &str) -> Result<AuthResult> {
+        match self.authenticate(username) {
+            Ok(true) => Ok(AuthResult::Success(String::new())),
+            Ok(false) => Ok(AuthResult::Failure("Authentication failed".to_string())),
+            Err(e) => Ok(AuthResult::Error(e.to_string())),
+        }
+    }
     fn authenticate_with_credential(&self, username: &str, _credential: &str) -> Result<bool> {
         // By default, fall back to standard authenticate if credential is not expected
         self.authenticate(username)
