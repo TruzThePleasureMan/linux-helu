@@ -5,6 +5,7 @@ use std::fs;
 use std::path::PathBuf;
 use directories::ProjectDirs;
 
+#[allow(dead_code)]
 pub struct PinAuth {
     config: crate::config::PinConfig,
 }

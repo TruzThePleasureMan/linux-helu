@@ -1,9 +1,9 @@
 use serde::{Deserialize, Serialize};
-use std::path::{Path, PathBuf};
+use std::path::Path;
 use anyhow::{Result, Context};
 use directories::ProjectDirs;
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone, Default)]
 pub struct Config {
     #[serde(default)]
     pub daemon: DaemonConfig,
@@ -19,18 +19,6 @@ pub struct Config {
     pub ui: UiConfig,
 }
 
-impl Default for Config {
-    fn default() -> Self {
-        Self {
-            daemon: DaemonConfig::default(),
-            face: FaceConfig::default(),
-            fingerprint: FingerprintConfig::default(),
-            pin: PinConfig::default(),
-            fido2: Fido2Config::default(),
-            ui: UiConfig::default(),
-        }
-    }
-}
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct DaemonConfig {

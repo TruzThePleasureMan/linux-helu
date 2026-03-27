@@ -1,5 +1,5 @@
 use super::AuthMethod;
-use anyhow::{Result, Context};
+use anyhow::Result;
 use std::path::{Path, PathBuf};
 use directories::ProjectDirs;
 
@@ -59,7 +59,7 @@ impl FaceAuth {
         if face_dir.exists() {
             for entry in std::fs::read_dir(face_dir)? {
                 let entry = entry?;
-                if entry.path().extension().map_or(false, |ext| ext == "bin") {
+                if entry.path().extension().is_some_and(|ext| ext == "bin") {
                     // 9. Calculate Cosine Similarity
                     // Mock calculation
                     best_score = 0.8;

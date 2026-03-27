@@ -3,6 +3,7 @@ use std::path::Path;
 use anyhow::Result;
 
 #[derive(Debug, Deserialize, Clone)]
+#[allow(dead_code)]
 pub struct ServerConfig {
     pub bind_addr: String,
     pub port: u16,

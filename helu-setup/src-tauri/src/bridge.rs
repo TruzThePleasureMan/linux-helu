@@ -3,7 +3,7 @@ use zbus::{Connection, proxy};
 use futures_lite::stream::StreamExt;
 use std::sync::Arc;
 use tokio::sync::Mutex;
-use tracing::{info, error};
+use tracing::info;
 
 pub struct HeluState {
     pub is_authenticating: bool,

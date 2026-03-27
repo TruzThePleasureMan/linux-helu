@@ -97,12 +97,8 @@ async fn main() -> Result<()> {
                 }
             }
         }
-        Commands::Whoami { headless } => {
-            if *headless {
-                println!("Helu, {}", current_user);
-            } else {
-                println!("Helu, {}", current_user);
-            }
+        Commands::Whoami { headless: _ } => {
+            println!("Helu, {}", current_user);
         }
     }
 
