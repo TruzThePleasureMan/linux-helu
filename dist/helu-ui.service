@@ -1,0 +1,17 @@
+[Unit]
+Description=Linux Helu Authentication Overlay
+Documentation=https://github.com/TruzThePleasureMan/linux-helu
+PartOf=graphical-session.target
+After=graphical-session.target
+After=dbus.service
+
+[Service]
+Type=simple
+# By default, use the system-wide path.
+# If installed via 'cargo install', change this to ~/.cargo/bin/helu-ui
+ExecStart=/usr/local/bin/helu-ui
+Restart=on-failure
+RestartSec=2
+
+[Install]
+WantedBy=graphical-session.target
