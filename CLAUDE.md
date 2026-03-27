@@ -13,6 +13,15 @@ Linux Helu provides a unified, production-grade biometric authentication experie
 - **`helu-setup`**: Tauri + Svelte, normal app window, enrollment only.
 - **`helu-server`**: A lightweight network server that functions as a RADIUS replacement, issuing biometric challenges and verifying JWTs.
 
+## Biometric Authentication Methods and Fallback Chain
+helud automatically handles degradation based on availability and enrollment across the following methods:
+1. **Face Recognition**: Primary method. Checked for ONNX model presence and `/dev/video*`.
+2. **Fingerprint**: Uses `fprintd` over D-Bus (`net.reactivated.Fprint`). Falls back cleanly if daemon is missing or no device is registered.
+3. **FIDO2**: Uses CTAP2 natively over `hidraw` (no browser required). Checks for `/dev/hidraw*` proxy presence. Requires physical touch.
+4. **PIN**: Local encrypted fallback mechanism. Always available as the final link in the chain.
+
+The `Authenticate("auto")` call iterates this chain synchronously in order, terminating and returning success on the first match.
+
 ## Architecture & Auth Flow
 ```text
 [PAM Trigger: sudo, login, etc]

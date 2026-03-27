@@ -137,4 +137,10 @@ impl HeluAuth {
 
     #[zbus(signal)]
     async fn auth_failure(ctxt: &SignalEmitter<'_>, username: &str, reason: String) -> zbus::Result<()>;
+
+    #[zbus(signal)]
+    async fn enroll_progress(ctxt: &SignalEmitter<'_>, username: &str, stage: u32, total: u32) -> zbus::Result<()>;
+
+    #[zbus(signal)]
+    async fn auth_state_changed(ctxt: &SignalEmitter<'_>, state: &str) -> zbus::Result<()>;
 }

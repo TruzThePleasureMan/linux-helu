@@ -44,9 +44,10 @@ impl AuthManager {
 
     pub async fn authenticate(&mut self, username: &str, method: &str) -> Result<bool> {
         if method == "auto" {
-            // Try Face -> Fingerprint -> PIN
+            // Try Face -> Fingerprint -> FIDO2 -> PIN
             if self.methods.get("face").is_some_and(|m| m.authenticate(username).unwrap_or(false)) { return Ok(true); }
             if self.methods.get("fingerprint").is_some_and(|m| m.authenticate(username).unwrap_or(false)) { return Ok(true); }
+            if self.methods.get("fido2").is_some_and(|m| m.authenticate(username).unwrap_or(false)) { return Ok(true); }
             if self.methods.get("pin").is_some_and(|m| m.authenticate(username).unwrap_or(false)) { return Ok(true); }
             Ok(false)
         } else if let Some(m) = self.methods.get(method) {

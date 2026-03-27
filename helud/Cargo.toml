@@ -23,4 +23,7 @@ tracing = "0.1.44"
 tracing-subscriber = "0.3.23"
 tss-esapi = "7.6.0"
 zbus = { version = "5.14.0", features = ["tokio"] }
+ctap-hid-fido2 = "3.5.9"
+futures = "0.3.31"
+chrono = "0.4.39"
 helu-common = { version = "0.1.0", path = "../helu-common" }
