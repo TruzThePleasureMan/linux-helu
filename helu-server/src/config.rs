@@ -1,36 +1,103 @@
 use serde::Deserialize;
+use std::fs;
 use std::path::Path;
-use anyhow::Result;
+use anyhow::{Context, Result};
 
 #[derive(Debug, Deserialize, Clone)]
-#[allow(dead_code)]
 pub struct ServerConfig {
-    pub bind_addr: String,
-    pub port: u16,
-    pub jwt_secret: String,
-    pub token_ttl: u64,
+    pub bind: String,
+    pub tls_cert: Option<String>,
+    pub tls_key: Option<String>,
 }
 
-impl Default for ServerConfig {
-    fn default() -> Self {
-        Self {
-            bind_addr: "127.0.0.1".to_string(),
-            port: 8080,
-            jwt_secret: "change-me-in-production".to_string(),
-            token_ttl: 3600,
-        }
-    }
+#[derive(Debug, Deserialize, Clone)]
+pub struct DatabaseConfig {
+    pub url: String,
+    pub max_connections: u32,
 }
 
-impl ServerConfig {
-    pub fn load() -> Result<Self> {
-        // Skeleton loader
-        let path = Path::new("/etc/helu/helu-server.toml");
-        if path.exists() {
-            // Load from file in real implementation
-            Ok(Self::default())
+#[derive(Debug, Deserialize, Clone)]
+pub struct JwtConfig {
+    pub secret: Option<String>,
+    pub ttl_secs: u64,
+    pub algorithm: String,
+    pub private_key_path: Option<String>,
+    pub public_key_path: Option<String>,
+}
+
+#[derive(Debug, Deserialize, Clone)]
+pub struct ChallengeConfig {
+    pub ttl_secs: u64,
+}
+
+#[derive(Debug, Deserialize, Clone)]
+pub struct DbusConfig {
+    pub bus: String,
+}
+
+#[derive(Debug, Deserialize, Clone)]
+pub struct AuthConfig {
+    pub allowed_methods: Vec<String>,
+}
+
+#[derive(Debug, Deserialize, Clone)]
+pub struct HeluServerConfig {
+    pub server: ServerConfig,
+    pub database: DatabaseConfig,
+    pub jwt: JwtConfig,
+    pub challenge: ChallengeConfig,
+    pub dbus: DbusConfig,
+    pub auth: AuthConfig,
+}
+
+impl HeluServerConfig {
+    pub fn load(path_str: &str) -> Result<Self> {
+        let path = Path::new(path_str);
+
+        let contents = if path.exists() {
+            fs::read_to_string(path).context(format!("Failed to read config file at {}", path_str))?
         } else {
-            Ok(Self::default())
+            // Provide a default dev configuration if none exists
+            String::from(r#"
+[server]
+bind = "0.0.0.0:8080"
+
+[database]
+url = "postgres://helu:password@localhost/helu"
+max_connections = 10
+
+[jwt]
+secret = "change-me-in-production"
+ttl_secs = 3600
+algorithm = "HS256"
+
+[challenge]
+ttl_secs = 60
+
+[dbus]
+bus = "session"
+
+[auth]
+allowed_methods = ["face", "fingerprint", "fido2", "pin"]
+            "#)
+        };
+
+        let config: HeluServerConfig = toml::from_str(&contents).context("Failed to parse config file")?;
+
+        if config.jwt.algorithm == "RS256" {
+            let priv_path = config.jwt.private_key_path.as_ref().context("helu-server: RS256 configured but private_key_path not set")?;
+            let pub_path = config.jwt.public_key_path.as_ref().context("helu-server: RS256 configured but public_key_path not set")?;
+
+            if !Path::new(priv_path).exists() {
+                anyhow::bail!("helu-server: RS256 configured but private key not found at {}", priv_path);
+            }
+            if !Path::new(pub_path).exists() {
+                anyhow::bail!("helu-server: RS256 configured but public key not found at {}", pub_path);
+            }
+        } else if config.jwt.algorithm == "HS256" && config.jwt.secret.is_none() {
+             anyhow::bail!("helu-server: HS256 configured but secret not set");
         }
+
+        Ok(config)
     }
 }

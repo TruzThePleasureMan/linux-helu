@@ -13,6 +13,14 @@ Linux Helu provides a unified, production-grade biometric authentication experie
 - **`helu-setup`**: Tauri + Svelte, normal app window, enrollment only.
 - **`helu-server`**: A lightweight network server that functions as a RADIUS replacement, issuing biometric challenges and verifying JWTs.
 
+### `helu-server` Details
+`helu-server` provides a lightweight network auth replacement. It connects natively to `helud` via local D-Bus to issue biometric challenges, verifying responses by directly capturing return values of `Authenticate` method calls.
+Its API endpoints include:
+- `POST /auth/challenge`: Creates an authentication challenge for a user and biometric method, stored in the postgres backend with a short expiration.
+- `POST /auth/verify`: Using the challenge data, initiates blocking D-Bus calls via `helud` allowing the client to verify biometrics. Returns a valid signed JWT (HS256 or RS256).
+- `POST /auth/direct`: A single step alternative endpoint that operates similar to `/verify` but receives both username and credentials (`pin`) in one step.
+- `POST /admin/*`: Admin APIs configured via Argon2 API key headers to enable creating API keys or configuring authentication nodes/users.
+
 ## Biometric Authentication Methods and Fallback Chain
 helud automatically handles degradation based on availability and enrollment across the following methods:
 1. **Face Recognition**: Primary method. Checked for ONNX model presence and `/dev/video*`.

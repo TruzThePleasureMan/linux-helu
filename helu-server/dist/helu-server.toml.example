@@ -1,0 +1,29 @@
+# helu-server/dist/helu-server.toml.example
+[server]
+bind = "0.0.0.0:8080"
+# For production use, uncomment and set the paths below (Let's Encrypt recommended)
+# tls_cert = "/etc/helu/server.crt"
+# tls_key  = "/etc/helu/server.key"
+
+[database]
+url = "postgres://helu:password@localhost/helu"
+max_connections = 10
+
+[jwt]
+# HS256 requires a secret
+secret = "change-me-in-production"
+ttl_secs = 3600
+
+# Recommended: use RS256 for asymmetric signing
+# algorithm = "RS256"
+# private_key_path = "/etc/helu/jwt.key"   # PEM, RSA private key
+# public_key_path  = "/etc/helu/jwt.pub"   # PEM, RSA public key
+
+[challenge]
+ttl_secs = 60
+
+[dbus]
+bus = "system"  # Or "session" for testing locally
+
+[auth]
+allowed_methods = ["face", "fingerprint", "fido2", "pin"]

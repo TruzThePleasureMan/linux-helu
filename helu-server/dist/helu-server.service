@@ -1,0 +1,15 @@
+[Unit]
+Description=Linux Helu Network Auth Server
+After=network.target postgresql.service
+Wants=postgresql.service
+
+[Service]
+Type=simple
+ExecStart=/usr/local/bin/helu-server
+Restart=on-failure
+User=helu
+Group=helu
+Environment="RUST_LOG=info"
+
+[Install]
+WantedBy=multi-user.target

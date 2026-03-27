@@ -1,0 +1,19 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        INSERT INTO auth_log (username, method, success, reason, client_ip, api_key_id)\n        VALUES ($1, $2, $3, $4, $5, $6)\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text",
+        "Bool",
+        "Text",
+        "Inet",
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "2118508b1e9854dab3c628ecad28bc5ecf686331897f448e88d9e4bd85833796"
+}
