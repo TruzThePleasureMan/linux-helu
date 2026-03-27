@@ -60,3 +60,23 @@ If you wish to test `pam_helu.so` in real scenarios, you need to configure D-Bus
 When running on real hardware (no `--mock`), the face pipeline will attempt to load a model.
 By default, the daemon looks for `/usr/share/helu/models/mobilefacenet.onnx`.
 You can override this in `/etc/helu/helu.toml` or `~/.config/helu/helu.toml` under `[face].model_path`. Download the `mobilefacenet.onnx` from the canonical InsightFace repository and place it in the configured path.
+
+## Autostart
+To have the `helu-ui` overlay automatically run in the background upon login, you can install the systemd user service.
+
+1. **Using the Install Script**
+   You can automate the installation of the user service by running:
+   ```bash
+   ./scripts/install-user-service.sh
+   ```
+
+2. **Manual Installation**
+   Alternatively, install and start it manually with:
+   ```bash
+   mkdir -p ~/.config/systemd/user
+   cp dist/helu-ui.service ~/.config/systemd/user/
+   systemctl --user daemon-reload
+   systemctl --user enable --now helu-ui
+   ```
+
+   *Note: The default `ExecStart` path in the service assumes `helu-ui` is installed at `/usr/local/bin/helu-ui`. If you installed it with `cargo install`, you'll need to update the file to point to `~/.cargo/bin/helu-ui` before reloading.*
