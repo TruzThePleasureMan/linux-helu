@@ -61,20 +61,34 @@ impl PinPad {
         button.set_halign(gtk::Align::Center);
         button.add_css_class("suggested-action");
 
-        button.connect_clicked({
+        use std::rc::Rc;
+        let submit_pin_action = Rc::new({
             let entry = entry.clone();
-            move |_| {
+            move || {
                 let pin = entry.text().to_string();
+                // Clear the PIN entry field immediately after emit regardless of result
+                entry.set_text("");
                 if !pin.is_empty() {
                     // Send PIN to daemon
                     tokio::spawn(async move {
+                        // "user" should ideally come from state, but assuming single user logic or daemon knows
                         if let Err(e) = crate::dbus::submit_pin("user", &pin).await {
                             eprintln!("Failed to submit PIN: {:?}", e);
                         }
                     });
-                    entry.set_text("");
                 }
             }
+        });
+
+        button.connect_clicked({
+            let submit_pin_action = submit_pin_action.clone();
+            move |_| {
+                submit_pin_action();
+            }
+        });
+
+        entry.connect_activate(move |_| {
+            submit_pin_action();
         });
 
         Self { entry, grid, button }

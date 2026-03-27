@@ -11,6 +11,8 @@ pub enum RingState {
     Scanning,
     Success,
     Failure,
+    FidoPrompt,
+    PinFallback,
 }
 
 pub struct PulsingRing {
@@ -51,6 +53,9 @@ impl PulsingRing {
                 if ring.state == RingState::Scanning {
                     ring.pulse = (ring.pulse + 0.05) % (PI * 2.0);
                     ring.area.queue_draw();
+                } else if ring.state == RingState::FidoPrompt {
+                    ring.pulse = (ring.pulse + 0.02) % (PI * 2.0);
+                    ring.area.queue_draw();
                 }
                 glib::ControlFlow::Continue
             }
@@ -75,13 +80,18 @@ impl PulsingRing {
         let radius = 80.0;
 
         let (r, g, b) = match self.state {
-            RingState::Idle => (0.5, 0.5, 0.5),
+            RingState::Idle => (0.267, 0.267, 0.267), // #444444
             RingState::Scanning => {
                 let intensity = (self.pulse.sin() + 1.0) / 2.0;
                 (0.2, 0.6 + 0.4 * intensity, 1.0) // pulsing blue
             }
-            RingState::Success => (0.2, 0.8, 0.2), // green
-            RingState::Failure => (0.9, 0.2, 0.2), // red
+            RingState::Success => (0.133, 0.91, 0.478), // #22e87a
+            RingState::Failure => (0.91, 0.267, 0.133), // #e84422
+            RingState::FidoPrompt => {
+                let intensity = (self.pulse.sin() + 1.0) / 2.0;
+                (0.91, 0.753 + 0.1 * intensity, 0.133) // #e8c022 with slow pulse
+            }
+            RingState::PinFallback => (0.267, 0.267, 0.267), // #444444
         };
 
         cr.set_source_rgba(r, g, b, 0.8);

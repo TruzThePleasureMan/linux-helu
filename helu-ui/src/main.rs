@@ -38,16 +38,27 @@ async fn main() {
         if mock_mode {
             println!("Starting in mock mode...");
             // Spawns a background task that ticks states into the UI
+            // Cycle requested: Idle (1s) → Scanning (2s) → Failure/attempt 1 (1.5s) →
+            // Failure/attempt 2 (1.5s) → PinFallback (2s) → Success (1.5s) → Idle
             std::thread::spawn(move || {
-                let states = vec![
-                    helu_common::types::AuthState { state: "Idle".into(), reason: "".into(), retry_count: 0 },
-                    helu_common::types::AuthState { state: "Scanning".into(), reason: "".into(), retry_count: 0 },
-                    helu_common::types::AuthState { state: "Failure".into(), reason: "Face not recognized".into(), retry_count: 1 },
-                    helu_common::types::AuthState { state: "Fallback".into(), reason: "".into(), retry_count: 0 },
-                ];
-                for state in states.into_iter().cycle() {
-                    std::thread::sleep(std::time::Duration::from_secs(3));
-                    let _ = tx.send_blocking(dbus::UiEvent::StateChange(state));
+                loop {
+                    let _ = tx.send_blocking(dbus::UiEvent::StateChange(helu_common::types::AuthState { username: "user".into(), state: "Idle".into(), reason: "".into(), retry_count: 0 }));
+                    std::thread::sleep(std::time::Duration::from_millis(1000));
+
+                    let _ = tx.send_blocking(dbus::UiEvent::AuthRequested { username: "user".into() });
+                    std::thread::sleep(std::time::Duration::from_millis(2000));
+
+                    let _ = tx.send_blocking(dbus::UiEvent::AuthFailure { username: "user".into(), reason: "Face not recognized".into() });
+                    std::thread::sleep(std::time::Duration::from_millis(1500));
+
+                    let _ = tx.send_blocking(dbus::UiEvent::AuthFailure { username: "user".into(), reason: "Face not recognized".into() });
+                    std::thread::sleep(std::time::Duration::from_millis(1500));
+
+                    let _ = tx.send_blocking(dbus::UiEvent::AuthFailure { username: "user".into(), reason: "Face not recognized".into() }); // trigger PinFallback
+                    std::thread::sleep(std::time::Duration::from_millis(2000));
+
+                    let _ = tx.send_blocking(dbus::UiEvent::AuthSuccess { username: "user".into() });
+                    std::thread::sleep(std::time::Duration::from_millis(1500));
                 }
             });
         } else {

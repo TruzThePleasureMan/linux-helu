@@ -12,6 +12,7 @@ pub enum AuthMethod {
 
 #[derive(Debug, Clone, Serialize, Deserialize, Type)]
 pub struct AuthState {
+    pub username: String, // Added to map DBus signals correctly
     pub state: String, // "Idle", "Scanning", "Success", "Failure", "Fallback", "FidoPrompt"
     pub reason: String, // empty if none
     pub retry_count: u32, // 0 if none
