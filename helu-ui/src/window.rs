@@ -25,14 +25,21 @@ pub fn build(app: &adw::Application, _tx: async_channel::Sender<crate::dbus::UiE
         window.set_decorated(false);
     }
 
-    let overlay = crate::overlay::AuthOverlay::new();
+    let mut overlay = crate::overlay::AuthOverlay::new();
+    overlay.set_window(window.clone());
     window.set_content(Some(overlay.widget()));
-    window.present();
+    window.set_visible(false);
 
-    // Tell daemon UI is ready via DBus
+    // Tell daemon UI is ready via DBus within 500ms
+    // We already do this via spawn below, but we can add a slight delay if needed.
+    // Spawning it directly should be within 500ms.
+    // If connection fails, log and exit with non-zero
     tokio::spawn(async {
+        // give glib loop a tiny moment to start
+        tokio::time::sleep(std::time::Duration::from_millis(100)).await;
         if let Err(e) = crate::dbus::emit_ui_ready().await {
             eprintln!("Failed to emit UIReady: {:?}", e);
+            std::process::exit(1);
         }
     });
 

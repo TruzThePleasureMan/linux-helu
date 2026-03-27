@@ -66,7 +66,7 @@ You can run the stack using session D-Bus and mocked hardware:
 4. Run the auth UI (mocked): `cargo run --bin helu-ui -- --mock`
 5. Test with CLI: `cargo run --bin helu-cli test`
 
-## Known Edges & TODOs
+## Known Edges
 - **Face Model**: You must provide `mobilefacenet.onnx` from the InsightFace repository and configure its path. It is not bundled in the repo.
 - **`HELU_MOCK_PIN`**: Removed. PIN authentication fallback in PAM handles verification locally and passes the PIN over D-Bus via `AuthenticateWithCredential`.
 - **UI Startup Grace Period**: Previously `pam_helu` had a race condition firing before `helu-ui` was fully awake. This is now mitigated via a 3-second UI readiness check and polling of the session bus.
