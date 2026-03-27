@@ -1,8 +1,57 @@
 # Linux Helu Architecture
 
-## Components
+## System Overview
 
-[PAM Trigger] -> pam_helu.so -> (D-Bus) -> helud -> (Face/FP/FIDO2 logic)
+```text
+[PAM Trigger: sudo, login, etc]
+       |
+       v
+   pam_helu.so   ----(D-Bus Authenticate(username, "auto"))---->   helud (Daemon)
+                                                                     |
+                                                                     +--> Loads Config / User Data
+                                                                     |
+   [helu-ui] <-----(D-Bus AuthRequested Signal)----------------------+
+     (Shows    <-----(D-Bus AuthStateChanged / Fallbacks)------------+
+      UI)                                                            |
+                                                                     +--> Face Recognition Pipeline (ONNX)
+                                                                     +--> Fingerprint (fprintd)
+                                                                     +--> FIDO2
+                                                                     +--> PIN verification
+                                                                     |
+   pam_helu.so   <-------(D-Bus Returns Success/Fail)----------------+
+       |
+       v
+  [Access Granted / Denied]
+```
+
+## Component Responsibilities
+
+- **`helud`**: The central D-Bus daemon running as root. Orchestrates authentication, interacts directly with hardware components (FIDO2, Face, Fingerprint) and performs validation.
+- **`pam_helu`**: The PAM module that applications integrate with. It translates PAM requests into D-Bus calls targeting `helud` and handles passing passwords via `AuthenticateWithCredential` when appropriate.
+- **`helu-ui`**: The visual frontend (lockscreen) displaying auth state, capturing PIN, and reacting to D-Bus signals from `helud`.
+- **`helu-setup`**: A user-facing application for enrolling new biometric factors.
+- **`helu-server`**: The enterprise network authentication piece designed as an alternative to RADIUS, acting as an identity provider by bridging remote requests to local D-Bus calls to `helud`.
+
+## D-Bus Interface Spec
+See `helu-common/src/dbus.rs` for exact definitions.
+
+Exposed by `helud` (`net.helu.Auth`):
+- `Authenticate(username: String, method: String) -> (success: Bool, message: String)`
+- `AuthenticateWithCredential(username: String, method: String, credential: String) -> (success: Bool, message: String)`
+- `Enroll(username: String, method: String) -> (success: Bool)`
+- `ListMethods(username: String) -> (methods: Array<String>)`
+- `Status() -> (daemon_version: String, loaded_methods: Array<String>)`
+
+Signals on `net.helu.Auth`:
+- `AuthRequested(username: String)`
+- `AuthSuccess(username: String)`
+- `AuthFailure(username: String, reason: String)`
+- `AuthStateChanged(state: AuthState)`
+
+Exposed by `helu-ui` (`net.helu.UI`):
+Signals on `net.helu.UI`:
+- `PinSubmitted(username: String, pin: String)`
+- `UiReady()`
 
 ## Biometric Security Model
 
@@ -29,7 +78,7 @@ Thresholds for a match typically range from 0.5 to 0.7. Lower thresholds imply a
 
 ## Network Authentication Flow
 
-```
+```text
 ┌─────────────┐     POST /auth/challenge      ┌──────────────┐
 │  VPN / App  │ ────────────────────────────► │ helu-server  │
 │  (client)   │                               │   (axum)     │
@@ -57,3 +106,6 @@ Thresholds for a match typically range from 0.5 to 0.7. Lower thresholds imply a
 - No native biometric support
 - No modern token format
 - helu-server uses HTTPS, Argon2, JWT, and biometric-gated issuance
+
+## Future Architecture Notes
+- Remote `helud` agents allowing `helu-server` to operate as a centralized multi-node orchestrator over gRPC instead of local D-Bus.

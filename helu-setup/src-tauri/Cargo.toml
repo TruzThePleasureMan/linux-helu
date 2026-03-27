@@ -1,7 +1,7 @@
 [package]
 name = "helu-setup"
 version = "0.1.0"
-description = "A Tauri App"
+description = "Tauri application for enrolling biometric data"
 authors = ["you"]
 edition = "2021"
 

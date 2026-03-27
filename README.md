@@ -1,42 +1,104 @@
 # Linux Helu 🐧👋
+
 ```text
      .-.
     (o o)    Linux Helu 🐧👋
     | O |    Real biometric auth for Linux.
     '\_/'    Born from a meme. Built for production.
 ```
-**Disclaimer:** Unlike certain other auth systems from 1991, Linux Helu was designed after the invention of the internet.
 
-## What is Linux Helu?
-Linux Helu is a genuine, production-grade biometric authentication system for Linux — unifying face recognition, fingerprint, PIN, and FIDO2 under a single D-Bus daemon and a modern Tauri frontend. It is designed to eventually replace RADIUS in enterprise environments.
+## What it is
+Unified biometric auth daemon for Linux
+Face, fingerprint, FIDO2, PIN under one D-Bus interface
+PAM integration — works with any PAM-aware application
+Network auth server replacing RADIUS for enterprise use
 
-The name is a joke. The software is not. It’s a real, robust PAM module, D-Bus daemon, and GUI tool chain built entirely in Rust and Web Technologies.
+## Why
+"RADIUS is from 1991. fprintd, face recognition, and FIDO2 have never had a unified Linux auth layer. Linux Helu is that layer."
 
-## Architecture Overview
+## Display server support
+| Compositor Status | Wayland (wlroots: Sway, Hyprland, River) |
+| --- | --- |
+| ✅ Full layer-shell support | Wayland (GNOME Shell 45+) |
+| ✅ Supported | Wayland (KDE Plasma 6) |
+| ✅ Supported | X11 |
+| ✅ Fallback mode, keep-above window | Mir |
+| 🤷 Untested. Good luck. | |
+
+## Architecture diagram
 ```text
-[PAM Trigger] -> pam_helu.so -> (D-Bus) -> helud
-                                              |
-      [Tauri Svelte UI] <--(D-Bus)------------+--> Face Recognition (ONNX)
-                                              +--> Fingerprint (fprintd)
-                                              +--> FIDO2
-                                              +--> PIN Fallback
+[PAM Trigger: sudo, login, etc]
+       |
+       v
+   pam_helu.so   ----(D-Bus Authenticate(username, "auto"))---->   helud (Daemon)
+                                                                     |
+                                                                     +--> Loads Config / User Data
+                                                                     |
+   [helu-ui] <-----(D-Bus AuthRequested Signal)----------------------+
+     (Shows    <-----(D-Bus AuthStateUpdates / Fallbacks)------------+
+      UI)                                                            |
+                                                                     +--> Face Recognition Pipeline (ONNX)
+                                                                     +--> Fingerprint (fprintd)
+                                                                     +--> FIDO2
+                                                                     +--> PIN verification
+                                                                     |
+   pam_helu.so   <-------(D-Bus Returns Success/Fail)----------------+
+       |
+       v
+  [Access Granted / Denied]
 ```
 
-## Prerequisites and Install
+## Prerequisites
 - Rust toolchain (`cargo`)
 - `libwebkit2gtk-4.1-dev` and common build essentials.
 - Tauri CLI (`npm install -g @tauri-apps/cli`)
 - ONNX Runtime and a valid `mobilefacenet.onnx` model (InsightFace).
+- PostgreSQL (for `helu-server`).
 
-## PAM Setup
-To install Linux Helu for PAM authentication, add this to your PAM configuration (e.g. `/etc/pam.d/system-auth` or `/etc/pam.d/sudo`):
+## Quick start
+1. Build the workspace: `cargo build --workspace --release`
+2. Download the ONNX model: `./scripts/download-model.sh`
+3. Install the PAM module (see PAM setup below).
+4. Run the daemon: `sudo target/release/helud`
+5. Enroll your biometrics: `cd helu-setup && npm run tauri dev`
+
+## Component overview
+- **helud**: The core daemon running on D-Bus. Handles auth requests, configuration, and biometric verification logic.
+- **pam_helu**: A C-compatible PAM library (`pam_sm_authenticate`) that forwards auth requests to `helud`.
+- **helu-cli**: Command-line tool for enrolling biometric data and checking system status.
+- **helu-ui**: GTK4 system overlay, layer-shell, Rust only, no web tech. Provides the lockscreen and auth UI.
+- **helu-setup**: Tauri + Svelte, normal app window, enrollment only.
+- **helu-server**: A lightweight network server that functions as a RADIUS replacement, issuing biometric challenges and verifying JWTs.
+
+## PAM setup
 ```text
 auth    sufficient    pam_helu.so
 auth    required      pam_unix.so try_first_pass
 ```
 
-## Config
-The primary configuration is loaded from `/etc/helu/helu.toml` (system) and `~/.config/helu/user.toml` (user mode).
+## helu-server deployment
+To deploy `helu-server` using Docker:
+```bash
+docker build -t helu-server -f helu-server/Dockerfile .
+docker run -d -p 8080:8080 --env-file .env helu-server
+```
+Or run as a systemd service:
+```ini
+[Unit]
+Description=Linux Helu Network Auth Server
+After=network.target postgresql.service
+
+[Service]
+ExecStart=/usr/local/bin/helu-server
+EnvironmentFile=/etc/helu/server.env
+Restart=always
+
+[Install]
+WantedBy=multi-user.target
+```
+
+## Config reference
+`/etc/helu/helu.toml`:
 ```toml
 [daemon]
 bus = "session" # 'system' or 'session'
@@ -54,40 +116,57 @@ mock_hardware = true # for development
 accent_color = "#e95420"
 greeting = "Helu" # Change to "Hello" if you hate fun
 ```
+`/etc/helu/helu-server.toml`:
+```toml
+[server]
+bind = "0.0.0.0:8080"
+tls_cert = "/path/to/cert.pem" # Optional
+tls_key = "/path/to/key.pem" # Optional
 
-## Display Server Support
-| Compositor Status | Wayland (wlroots: Sway, Hyprland, River) |
-| --- | --- |
-| ✅ Full layer-shell support | Wayland (GNOME Shell 45+) |
-| ✅ Supported | Wayland (KDE Plasma 6) |
-| ✅ Supported | X11 |
-| ✅ Fallback mode, keep-above window | Mir |
-| 🤷 Untested. Good luck. | |
+[database]
+url = "postgres://helu:password@localhost/helu"
+max_connections = 10
 
-## Testing Locally
-To test the PAM module locally:
-```bash
-# Build the module
-cargo build -p pam_helu
+[jwt]
+secret = "change-me-in-production"
+ttl_secs = 3600
+algorithm = "HS256" # Or "RS256"
+private_key_path = "/path/to/private.pem" # Optional, required for RS256
+public_key_path = "/path/to/public.pem" # Optional, required for RS256
 
-# Copy to PAM module dir (requires root on real system)
-sudo cp target/debug/libpam_helu.so /lib/security/pam_helu.so
+[challenge]
+ttl_secs = 60
 
-# Test with pamtester (install via package manager)
-pamtester -v helu-test $USER authenticate
+[dbus]
+bus = "session" # 'system' or 'session'
+
+[auth]
+allowed_methods = ["face", "fingerprint", "fido2", "pin"]
 ```
 
-## Known Issues
+## Wayland Gotchas
+`gtk4_layer_shell::is_supported()` must always be checked before calling any layer shell API. Some compositors might not support layer shell, in which case the UI falls back to a normal window.
+
+## Model download
+Usage: `./scripts/download-model.sh`
+This script will fetch the `mobilefacenet.onnx` model from the required source and place it in the correct directory.
+
+## Contributing
+We welcome contributions! Please see our [CONTRIBUTING.md](CONTRIBUTING.md) for details on how to set up your dev environment, run tests, and our expectations for PRs. Open issues are a great place to start! Note that this project started as a meme, so contributions of all sizes are welcome.
+
+## Roadmap
+Phase 1: Core local auth ✅
+Phase 2: Network auth server ✅
+Phase 3: helu-setup Tauri enrollment UI
+Phase 4: Multi-node helu-server with remote helud agents
+Phase 5: freedesktop.org D-Bus spec proposal
+Phase 6: Distro packaging (Fedora, Debian, Arch AUR)
+
+## Known issues
 "It's Linux."
 
 ## Why?
-RADIUS was released in 1991. We were born in a meme. We're still more modern.
+"RADIUS was released in 1991. We were born in a meme. We're still more modern."
 
-## Roadmap
-1. `helud` daemon skeleton + D-Bus interface + PIN auth.
-2. `pam_helu.so` PAM module.
-3. `helu-ui` frontend wired over D-Bus.
-4. Face recognition pipeline (ONNX).
-5. Fingerprint via `fprintd`.
-6. FIDO2 support.
-7. `helu-server` network auth replacement.
+## License
+MIT

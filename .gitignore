@@ -1,2 +1,5 @@
 target/
-target/
+*.onnx
+*.enc
+tpm_sealed_key
+.env

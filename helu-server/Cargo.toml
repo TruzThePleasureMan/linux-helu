@@ -1,6 +1,7 @@
 [package]
 name = "helu-server"
 version = "0.1.0"
+description = "Lightweight network server that functions as a RADIUS replacement"
 edition = "2021"
 
 [dependencies]

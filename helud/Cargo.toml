@@ -1,6 +1,7 @@
 [package]
 name = "helud"
 version = "0.1.0"
+description = "Linux Helu core daemon running on D-Bus"
 edition = "2024"
 
 [dependencies]
@@ -25,5 +26,6 @@ tss-esapi = "7.6.0"
 zbus = { version = "5.14.0", features = ["tokio"] }
 ctap-hid-fido2 = "3.5.9"
 futures = "0.3.31"
-chrono = "0.4.39"
+chrono = { version = "0.4.39", features = ["serde"] }
 helu-common = { version = "0.1.0", path = "../helu-common" }
+serde_json = "1"
