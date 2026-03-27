@@ -1,0 +1,11 @@
+[package]
+name = "test_glib"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+async-channel = "2.5.0"
+gtk4 = "0.9"
+
+
+[workspace]

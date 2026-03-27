@@ -1,5 +1,5 @@
 use zbus::interface;
-use zbus::object_server::SignalContext;
+use zbus::object_server::SignalEmitter;
 use std::sync::Arc;
 use tokio::sync::Mutex;
 use crate::config::Config;
@@ -7,6 +7,7 @@ use crate::auth::AuthManager;
 use tracing::{info, error};
 
 pub struct HeluAuth {
+    #[allow(dead_code)]
     config: Arc<Config>,
     auth_manager: Arc<Mutex<AuthManager>>,
 }
@@ -24,7 +25,7 @@ impl HeluAuth {
 impl HeluAuth {
     async fn authenticate(
         &self,
-        #[zbus(signal_context)] ctxt: SignalContext<'_>,
+        #[zbus(signal_context)] ctxt: SignalEmitter<'_>,
         username: String,
         method: String,
     ) -> (bool, String) {
@@ -84,11 +85,11 @@ impl HeluAuth {
 
     // Signals
     #[zbus(signal)]
-    async fn auth_requested(ctxt: &SignalContext<'_>, username: &str, method: &str) -> zbus::Result<()>;
+    async fn auth_requested(ctxt: &SignalEmitter<'_>, username: &str, method: &str) -> zbus::Result<()>;
 
     #[zbus(signal)]
-    async fn auth_success(ctxt: &SignalContext<'_>, username: &str, method: &str) -> zbus::Result<()>;
+    async fn auth_success(ctxt: &SignalEmitter<'_>, username: &str, method: &str) -> zbus::Result<()>;
 
     #[zbus(signal)]
-    async fn auth_failure(ctxt: &SignalContext<'_>, username: &str, reason: String) -> zbus::Result<()>;
+    async fn auth_failure(ctxt: &SignalEmitter<'_>, username: &str, reason: String) -> zbus::Result<()>;
 }

@@ -3,6 +3,7 @@ use serde::Deserialize;
 use tracing::info;
 
 #[derive(Deserialize)]
+#[allow(dead_code)]
 pub struct EnrollRequest {
     pub username: String,
     pub method: String,

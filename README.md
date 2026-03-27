@@ -55,8 +55,14 @@ accent_color = "#e95420"
 greeting = "Helu" # Change to "Hello" if you hate fun
 ```
 
-## Wayland Gotchas
-Running undecorated, always-on-top, and centered windows in Wayland is notoriously tricky due to strict compositor rules. Tauri handles this as a standard desktop window, meaning on certain DEs (like Sway/Hyprland), you may need specific window rules to force it to float and center.
+## Display Server Support
+| Compositor Status | Wayland (wlroots: Sway, Hyprland, River) |
+| --- | --- |
+| ✅ Full layer-shell support | Wayland (GNOME Shell 45+) |
+| ✅ Supported | Wayland (KDE Plasma 6) |
+| ✅ Supported | X11 |
+| ✅ Fallback mode, keep-above window | Mir |
+| 🤷 Untested. Good luck. | |
 
 ## Known Issues
 "It's Linux."

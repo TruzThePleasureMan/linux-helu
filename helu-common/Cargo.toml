@@ -1,0 +1,8 @@
+[package]
+name = "helu-common"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+zbus = { version = "4" }
+serde = { version = "1.0", features = ["derive"] }
