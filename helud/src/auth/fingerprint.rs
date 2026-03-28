@@ -3,6 +3,7 @@ use anyhow::Result;
 use helu_common::types::AuthResult;
 use zbus::proxy;
 use tracing::{info, error, warn};
+use futures::StreamExt;
 use tokio::time::{timeout, Duration};
 
 #[proxy(
@@ -11,7 +12,7 @@ use tokio::time::{timeout, Duration};
     default_path = "/net/reactivated/Fprint/Manager"
 )]
 trait FprintManager {
-    fn get_default_device(&self) -> zbus::Result<zbus::zvariant::ObjectPath<'static>>;
+    fn get_default_device(&self) -> zbus::Result<zbus::zvariant::OwnedObjectPath>;
 }
 
 #[proxy(
@@ -47,6 +48,7 @@ impl FingerprintAuth {
         Self { config }
     }
 
+    #[allow(dead_code)]
     pub async fn fprintd_available() -> bool {
         let conn = match zbus::Connection::system().await {
             Ok(c) => c,
@@ -116,14 +118,12 @@ impl FingerprintAuth {
             return AuthResult::Error(format!("Failed to start verification: {}", e));
         }
 
-        let mut verify_result = AuthResult::Failure("fingerprint_unknown_error".to_string());
-
         // Wait for VerifyStatus signal with a timeout
         let timeout_duration = Duration::from_secs(15);
         let result = timeout(timeout_duration, async {
-            use zbus::StreamExt;
+
             while let Some(signal) = verify_stream.next().await {
-                let args = match signal.args() {
+                let args: VerifyStatusArgs = match signal.args() {
                     Ok(a) => a,
                     Err(_) => continue,
                 };
@@ -133,8 +133,8 @@ impl FingerprintAuth {
 
                 info!("Fingerprint verify status: result={}, done={}", status_str, done);
 
-                if done {
-                    return match status_str {
+                if *done {
+                    return match *status_str {
                         "verify-match" => AuthResult::Success(String::new()),
                         "verify-no-match" => AuthResult::Failure("fingerprint_no_match".to_string()),
                         "verify-unknown-error" => AuthResult::Error("fprintd error".to_string()),
@@ -148,16 +148,12 @@ impl FingerprintAuth {
         let _ = device.verify_stop().await;
 
         match result {
-            Ok(res) => {
-                verify_result = res;
-            }
+            Ok(res) => res,
             Err(_) => {
                 error!("Fingerprint verification timed out after {}s", timeout_duration.as_secs());
-                verify_result = AuthResult::Failure("fingerprint_timeout".to_string());
+                AuthResult::Failure("fingerprint_timeout".to_string())
             }
         }
-
-        verify_result
     }
 
     fn run_pipeline(&self, username: &str) -> Result<AuthResult> {
@@ -200,8 +196,8 @@ impl AuthMethod for FingerprintAuth {
         }
 
         let rt = tokio::runtime::Runtime::new()?;
-        rt.block_on(async {
+        Ok(rt.block_on(async {
             crate::enrollment::fingerprint::enroll_fingerprint(username).await.is_ok()
-        })
+        }))
     }
 }

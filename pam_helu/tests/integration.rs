@@ -2,6 +2,7 @@ use zbus::Connection;
 use helu_common::dbus::AuthProxy;
 use std::time::Duration;
 use tokio::time::sleep;
+use zbus::object_server::SignalContext;
 
 // A simple mock struct for helud auth proxy
 struct MockHeluAuth;
@@ -43,7 +44,7 @@ impl MockHeluAuth {
 
     #[zbus(signal)]
     async fn auth_requested(
-        ctxt: &zbus::SignalContext<'_>,
+        ctxt: &SignalContext<'_>,
         username: &str,
         method: &str,
     ) -> zbus::Result<()> {
@@ -52,7 +53,7 @@ impl MockHeluAuth {
 
     #[zbus(signal)]
     async fn auth_success(
-        ctxt: &zbus::SignalContext<'_>,
+        ctxt: &SignalContext<'_>,
         username: &str,
         method: &str,
     ) -> zbus::Result<()> {
@@ -61,7 +62,7 @@ impl MockHeluAuth {
 
     #[zbus(signal)]
     async fn auth_failure(
-        ctxt: &zbus::SignalContext<'_>,
+        ctxt: &SignalContext<'_>,
         username: &str,
         reason: &str,
     ) -> zbus::Result<()> {
