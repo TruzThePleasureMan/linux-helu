@@ -31,6 +31,8 @@
 - **`helu-ui`**: The visual frontend (lockscreen) displaying auth state, capturing PIN, and reacting to D-Bus signals from `helud`.
 - **`helu-setup`**: A user-facing application for enrolling new biometric factors.
 - **`helu-server`**: The enterprise network authentication piece designed as an alternative to RADIUS, acting as an identity provider by bridging remote requests to local D-Bus calls to `helud`.
+- **`helu-cli`**: Command-line tool for testing the daemon and checking biometric enrollment status without needing a UI.
+- **`helu-common`**: Shared Rust definitions, DBus proxy traits, and types used across the entire workspace.
 
 ## D-Bus Interface Spec
 See `helu-common/src/dbus.rs` for exact definitions.
@@ -109,3 +111,6 @@ Thresholds for a match typically range from 0.5 to 0.7. Lower thresholds imply a
 
 ## Future Architecture Notes
 - Remote `helud` agents allowing `helu-server` to operate as a centralized multi-node orchestrator over gRPC instead of local D-Bus.
+
+## Wayland and Layer Shell
+The `helu-ui` overlay uses GTK4 and the `gtk4-layer-shell` library. Layer shell is an extension to the Wayland protocol that allows applications to create panels, lockscreens, and overlays. We use it to ensure the biometric prompt correctly draws over other windows, acting as an un-ignorable system prompt, unlike a standard application window.

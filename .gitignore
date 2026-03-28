@@ -3,3 +3,6 @@ target/
 *.enc
 tpm_sealed_key
 .env
+node_modules/
+dist/
+*.log

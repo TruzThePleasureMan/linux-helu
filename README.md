@@ -35,7 +35,7 @@ Network auth server replacing RADIUS for enterprise use
                                                                      +--> Loads Config / User Data
                                                                      |
    [helu-ui] <-----(D-Bus AuthRequested Signal)----------------------+
-     (Shows    <-----(D-Bus AuthStateUpdates / Fallbacks)------------+
+     (Shows    <-----(D-Bus AuthStateChanged / Fallbacks)------------+
       UI)                                                            |
                                                                      +--> Face Recognition Pipeline (ONNX)
                                                                      +--> Fingerprint (fprintd)
@@ -112,6 +112,27 @@ threshold = 0.6
 camera_index = 0
 mock_hardware = true # for development
 
+[fingerprint]
+enabled = true
+timeout_secs = 15
+default_finger = "right-index-finger"
+
+[pin]
+enabled = true
+min_length = 4
+
+[fido2]
+enabled = true
+timeout_secs = 30
+credential_path = "/var/lib/helu/fido2"
+
+[crypto]
+tpm_device = "/dev/tpmrm0"
+tpm_pcrs = [0, 1, 7]
+face_store_path = "/var/lib/helu/faces.enc"
+sealed_key_path = "/var/lib/helu/tpm_sealed_key"
+software_fallback = true # Set to false to require TPM2 hardware
+
 [ui]
 accent_color = "#e95420"
 greeting = "Helu" # Change to "Hello" if you hate fun
@@ -165,8 +186,8 @@ Phase 6: Distro packaging (Fedora, Debian, Arch AUR)
 ## Known issues
 "It's Linux."
 
-## Why?
-"RADIUS was released in 1991. We were born in a meme. We're still more modern."
+## Why Not RADIUS?
+RADIUS was designed in 1991 for dial-up modem pools. It uses UDP with weak MD5-based auth by default, and has no native biometric support or modern token format. We replace it completely: `helu-server` uses HTTPS, Argon2, JWT, and biometric-gated issuance natively tied to your local OS daemon. We were born in a meme, but we're still more modern.
 
 ## License
 MIT

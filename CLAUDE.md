@@ -93,7 +93,7 @@ You can run the stack using session D-Bus and mocked hardware:
 
 ### Build Requirements
 - Rust toolchain
-- `libwebkit2gtk-4.1-dev`
+- `libwebkit2gtk-4.1-dev`, `libgtk-4-dev`, `libadwaita-1-dev`, `libgtk4-layer-shell-dev`, `libgirepository1.0-dev`, `libfido2-dev`, `fprintd`, `pamtester`, `postgresql-client`
 - Tauri CLI
 - ONNX Runtime + `mobilefacenet.onnx`
 - PostgreSQL
