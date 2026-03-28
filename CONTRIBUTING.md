@@ -15,7 +15,7 @@ To set up your local development environment, you will need the following depend
 
 To run the daemon and UI with mocked hardware, run them with the `--mock` flag. Ensure your `helu.toml` is set to `bus = "session"`, and then execute:
 ```bash
-cargo run --bin helud
+cargo run --bin helud -- --mock --bus session
 ```
 And in a separate terminal:
 ```bash

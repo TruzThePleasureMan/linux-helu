@@ -1,25 +1,36 @@
 [daemon]
-bus = "session" # 'system' or 'session'
-socket = "/run/helu/helu.sock"
-log_level = "info"
+bus = "session" # Which D-Bus to attach to: 'system' or 'session'
+socket = "/run/helu/helu.sock" # Optional direct socket path
+log_level = "info" # Logging verbosity level
 
 [face]
-enabled = true
-model_path = "/usr/share/helu/models/mobilefacenet.onnx"
-threshold = 0.6
-camera_index = 0
-mock_hardware = true
+enabled = true # Enable or disable face recognition
+model_path = "/usr/share/helu/models/mobilefacenet.onnx" # Path to the ONNX facial model
+threshold = 0.6 # Cosine similarity threshold for face matching. Lower = stricter. Range 0.5-0.7 recommended.
+camera_index = 0 # Default V4L2 camera index (e.g., 0 for /dev/video0)
+mock_hardware = true # If true, mock a successful face match for development
 
 [fingerprint]
-enabled = true
-timeout_secs = 15
-default_finger = "right-index-finger"
+enabled = true # Enable or disable fingerprint authentication via fprintd
+timeout_secs = 15 # Seconds to wait for a fingerprint scan
+default_finger = "right-index-finger" # Default finger to prompt for
+
+[pin]
+enabled = true # Enable or disable local PIN fallback
+min_length = 4 # Minimum PIN length during enrollment
 
 [fido2]
-enabled = true
-timeout_secs = 30
-credential_path = "/var/lib/helu/fido2"
+enabled = true # Enable or disable FIDO2 hardware token authentication
+timeout_secs = 30 # Seconds to wait for physical user presence (touch)
+credential_path = "/var/lib/helu/fido2" # Storage directory for FIDO2 credentials
+
+[crypto]
+tpm_device = "/dev/tpmrm0" # Path to the TPM2 resource manager
+tpm_pcrs = [0, 1, 7] # Platform Configuration Registers to bind to
+face_store_path = "/var/lib/helu/faces.enc" # File path for encrypted facial embeddings
+sealed_key_path = "/var/lib/helu/tpm_sealed_key" # File path for the TPM-sealed AES key
+software_fallback = true # If true, fallback to HKDF key derivation without TPM. WARNING: Reduces security.
 
 [ui]
-accent_color = "#e95420"
-greeting = "Helu"
+accent_color = "#e95420" # Color theme for the GTK4 UI overlay
+greeting = "Helu" # Display greeting text

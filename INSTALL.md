@@ -4,7 +4,19 @@
 You will need Rust installed on your machine (`rustup` recommended) and the build dependencies for Tauri and OpenCV/v4l2. On Ubuntu/Debian:
 ```bash
 sudo apt-get update
-sudo apt-get install -y libwebkit2gtk-4.1-dev build-essential curl wget file libssl-dev libgtk-3-dev libayatana-appindicator3-dev librsvg2-dev libv4l-dev clang libclang-dev llvm
+sudo apt-get install -y libwebkit2gtk-4.1-dev build-essential curl wget file libssl-dev libgtk-4-dev libadwaita-1-dev libgtk4-layer-shell-dev libgirepository1.0-dev libfido2-dev fprintd pamtester postgresql-client librsvg2-dev libv4l-dev clang libclang-dev llvm
+```
+
+**Note:** `libgtk4-layer-shell-dev` may not be available in `apt` on Debian Bookworm or older distros. If you cannot install it via your package manager, you must build it from source:
+
+```bash
+sudo apt-get install -y meson ninja-build libgtk-4-dev libgirepository1.0-dev
+git clone https://github.com/wmww/gtk4-layer-shell.git
+cd gtk4-layer-shell
+meson setup build -Dexamples=false -Ddocs=false -Dtests=false
+ninja -C build
+sudo ninja -C build install
+sudo ldconfig
 ```
 
 ## Running the Mock Environment Locally
@@ -18,7 +30,7 @@ To test the D-Bus Daemon and UI interaction without touching your actual system 
    *The daemon will register itself as `net.helu.Auth` on the session bus.*
 
 2. **Start the Frontend UI (`helu-ui`)**
-   In another terminal, launch the GTK4 UI:
+   In another terminal, launch the pure Rust GTK4 UI (no web tech):
    ```bash
    cargo run --bin helu-ui -- --mock
    ```
@@ -40,7 +52,9 @@ To test the D-Bus Daemon and UI interaction without touching your actual system 
    ```
 
 ## Real PAM Integration (Advanced)
-If you wish to test `pam_helu.so` in real scenarios, you need to configure D-Bus policy and install the module:
+If you wish to test `pam_helu.so` in real scenarios, you need to configure D-Bus policy and install the module.
+
+**⚠️ Warning:** Always keep a root shell open during PAM testing and take a snapshot of your VM before making any changes. If you mess up your PAM stack, you can lock yourself out of your system permanently!
 
 1. **Build the PAM module**
    ```bash
@@ -52,7 +66,10 @@ If you wish to test `pam_helu.so` in real scenarios, you need to configure D-Bus
    sudo cp target/release/libpam_helu.so /lib/security/pam_helu.so
    ```
 3. **Configure System D-Bus Policy**
-   Copy `dist/helu.policy` to `/etc/dbus-1/system.d/net.helu.Auth.conf` and restart D-Bus.
+   ```bash
+   sudo cp dist/helu.policy /etc/dbus-1/system.d/net.helu.Auth.conf
+   sudo systemctl restart dbus
+   ```
 4. **Edit PAM Stack**
    Add `auth sufficient pam_helu.so` to `/etc/pam.d/sudo` (test with caution!).
 
