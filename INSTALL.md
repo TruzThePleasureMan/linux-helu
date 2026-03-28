@@ -71,12 +71,29 @@ If you wish to test `pam_helu.so` in real scenarios, you need to configure D-Bus
    sudo systemctl restart dbus
    ```
 4. **Edit PAM Stack**
-   Add `auth sufficient pam_helu.so` to `/etc/pam.d/sudo` (test with caution!).
+   ```bash
+   # Test safely first with pamtester before touching sudo
+   sudo cp dist/helu-test.pam /etc/pam.d/helu-test
+   pamtester -v helu-test $USER authenticate
+
+   # Only if pamtester succeeds, add to sudo:
+   sudo cp /etc/pam.d/sudo /etc/pam.d/sudo.bak  # backup first
+   echo "auth sufficient pam_helu.so" | sudo tee -a /etc/pam.d/sudo
+   ```
 
 ## Fetching the Real ONNX Model
 When running on real hardware (no `--mock`), the face pipeline will attempt to load a model.
 By default, the daemon looks for `/usr/share/helu/models/mobilefacenet.onnx`.
-You can override this in `/etc/helu/helu.toml` or `~/.config/helu/helu.toml` under `[face].model_path`. Download the `mobilefacenet.onnx` from the canonical InsightFace repository and place it in the configured path.
+You can override this in `/etc/helu/helu.toml` or `~/.config/helu/helu.toml` under `[face].model_path`.
+
+Run the provided download script:
+
+    chmod +x scripts/download-model.sh
+    sudo ./scripts/download-model.sh
+
+Or download manually from:
+https://github.com/deepinsight/insightface/releases
+Place the file at `/usr/share/helu/models/mobilefacenet.onnx`
 
 ## Autostart
 To have the `helu-ui` overlay automatically run in the background upon login, you can install the systemd user service.
