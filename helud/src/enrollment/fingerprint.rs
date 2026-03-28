@@ -1,6 +1,7 @@
 use anyhow::Result;
 use zbus::proxy;
-use tracing::{info, error};
+use futures::StreamExt;
+use tracing::info;
 
 #[proxy(
     interface = "net.reactivated.Fprint.Manager",
@@ -8,7 +9,7 @@ use tracing::{info, error};
     default_path = "/net/reactivated/Fprint/Manager"
 )]
 trait FprintManager {
-    fn get_default_device(&self) -> zbus::Result<zbus::zvariant::ObjectPath<'static>>;
+    fn get_default_device(&self) -> zbus::Result<zbus::zvariant::OwnedObjectPath>;
 }
 
 #[proxy(
@@ -60,9 +61,8 @@ pub async fn enroll_fingerprint(username: &str) -> Result<()> {
     let total_stages = 5;
     let mut current_stage = 0;
 
-    use zbus::StreamExt;
     while let Some(signal) = enroll_stream.next().await {
-        let args = match signal.args() {
+        let args: EnrollStatusArgs = match signal.args() {
             Ok(a) => a,
             Err(_) => continue,
         };
@@ -72,7 +72,7 @@ pub async fn enroll_fingerprint(username: &str) -> Result<()> {
 
         info!("Fingerprint enroll status: result={}, done={}", status_str, done);
 
-        match status_str {
+        match *status_str {
             "enroll-stage-passed" => {
                 current_stage += 1;
                 // Emit D-Bus signal on session bus for UI
@@ -98,7 +98,7 @@ pub async fn enroll_fingerprint(username: &str) -> Result<()> {
             _ => {}
         }
 
-        if done {
+        if *done {
             break;
         }
     }

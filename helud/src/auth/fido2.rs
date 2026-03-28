@@ -1,8 +1,8 @@
 use super::AuthMethod;
 use anyhow::Result;
-use ctap_hid_fido2::{CfgNode, FidoKeyHid, HidParam, RelyingParty};
+use ctap_hid_fido2::FidoKeyHid;
 use helu_common::types::AuthResult;
-use tracing::{info, error, warn};
+use tracing::{info, error};
 use rand::RngCore;
 
 pub struct Fido2Auth {
@@ -14,9 +14,12 @@ impl Fido2Auth {
         Self { config }
     }
 
+    #[allow(dead_code)]
     pub fn fido2_device_available() -> bool {
         // Quick proxy check as requested
+        #[allow(dead_code)]
         let Ok(entries) = std::fs::read_dir("/dev") else { return false };
+        #[allow(clippy::collapsible_if)]
         for entry in entries.flatten() {
             if let Some(name) = entry.file_name().to_str() {
                 if name.starts_with("hidraw") {
@@ -55,28 +58,27 @@ impl Fido2Auth {
         }
 
         // 4. Send CTAP2 GetAssertion request to first available FIDO2 device
-        let api_key = FidoKeyHid::new(&[HidParam::get_default_params()], &CfgNode::new());
-        let rp = RelyingParty::new("net.helu.helud");
+        let devs = ctap_hid_fido2::get_fidokey_devices();
+        let params: Vec<ctap_hid_fido2::HidParam> = devs.into_iter().map(|d| d.param).collect();
+        let api_key = FidoKeyHid::new(&params, &ctap_hid_fido2::Cfg::init());
 
         // Timeout handling is tricky since ctap_hid_fido2 blocks.
         // We wrap it in a tokio task with timeout.
         let cred_id = cred.credential_id.clone();
-        let pub_key = cred.public_key.clone();
+        let _pub_key = cred.public_key.clone();
 
         let auth_task = tokio::task::spawn_blocking(move || {
-            let mut device = api_key.unwrap_or_else(|_| FidoKeyHid::new(&[HidParam::get_default_params()], &CfgNode::new()).unwrap());
+            let device = api_key.unwrap_or_else(|_| {
+                let devs = ctap_hid_fido2::get_fidokey_devices();
+                let params: Vec<ctap_hid_fido2::HidParam> = devs.into_iter().map(|d| d.param).collect();
+                FidoKeyHid::new(&params, &ctap_hid_fido2::Cfg::init()).unwrap()
+            });
 
-            // Allow 30s timeout within device
-            let params = ctap_hid_fido2::verifier::MessageBuilder::new()
-                .challenge(challenge.clone())
-                .rpid(rp.id.clone())
-                .allow_list(&[cred_id])
-                .up(true) // require user presence (touch)
-                .build();
+            let rp = "net.helu.helud";
 
             // Attempt assertion
-            match device.get_assertion(&rp, challenge.clone(), &[cred.credential_id.clone()]) {
-                Ok(assertion) => {
+            match device.get_assertion(rp, &challenge, std::slice::from_ref(&cred_id), None) {
+                Ok(_assertion) => {
                     // 5. Verify assertion signature against stored public key
                     // ctap-hid-fido2 doesn't have a simple standalone verify method exposed easily
                     // But if get_assertion returns success, the key validated it.
@@ -141,8 +143,8 @@ impl AuthMethod for Fido2Auth {
         }
 
         let rt = tokio::runtime::Runtime::new()?;
-        rt.block_on(async {
+        Ok(rt.block_on(async {
             crate::enrollment::fido2::enroll_fido2(username).await.is_ok()
-        })
+        }))
     }
 }
