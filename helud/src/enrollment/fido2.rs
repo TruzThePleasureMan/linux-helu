@@ -1,7 +1,7 @@
 use anyhow::{Result, Context};
 use serde::{Deserialize, Serialize};
 use chrono::{DateTime, Utc};
-use ctap_hid_fido2::{CfgNode, FidoKeyHid, HidParam, RelyingParty, verifier::MessageBuilder};
+use ctap_hid_fido2::FidoKeyHid;
 use rand::RngCore;
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -99,22 +99,27 @@ pub async fn enroll_fido2(username: &str) -> Result<()> {
     rand::thread_rng().fill_bytes(&mut user_id);
     rand::thread_rng().fill_bytes(&mut challenge);
 
+    let username_str = username.to_string();
     let enroll_task = tokio::task::spawn_blocking(move || {
-        let api_key = FidoKeyHid::new(&[HidParam::get_default_params()], &CfgNode::new());
-        let mut device = api_key.unwrap_or_else(|_| FidoKeyHid::new(&[HidParam::get_default_params()], &CfgNode::new()).unwrap());
+        let devs = ctap_hid_fido2::get_fidokey_devices();
+        let params: Vec<ctap_hid_fido2::HidParam> = devs.into_iter().map(|d| d.param).collect();
+        let api_key = FidoKeyHid::new(&params, &ctap_hid_fido2::Cfg::init());
 
-        let rp = RelyingParty::new("net.helu.helud");
-        let username_str = username.to_string();
+        let device = api_key.unwrap_or_else(|_| {
+            let devs = ctap_hid_fido2::get_fidokey_devices();
+            let params: Vec<ctap_hid_fido2::HidParam> = devs.into_iter().map(|d| d.param).collect();
+            FidoKeyHid::new(&params, &ctap_hid_fido2::Cfg::init()).unwrap()
+        });
 
-        let message = MessageBuilder::new()
-            .challenge(challenge)
-            .rpid(rp.id.clone())
-            .user_id(user_id)
-            .user_name(username_str)
-            .up(true)
-            .build();
+        let rp = "net.helu.helud";
 
-        device.make_credential(&rp, &message)
+        let user_entity = ctap_hid_fido2::public_key_credential_user_entity::PublicKeyCredentialUserEntity::new(
+            Some(&user_id),
+            Some(&username_str),
+            Some(&username_str)
+        );
+
+        device.make_credential_rk(rp, &challenge, None, &user_entity)
     });
 
     // 2. Send CTAP2 MakeCredential request (Prompts user to touch key)
@@ -127,7 +132,7 @@ pub async fn enroll_fido2(username: &str) -> Result<()> {
 
     // ctap-hid-fido2 doesn't immediately expose the public key byte extraction trivially,
     // so we store the credential ID and mock the public key / AAGUID for now unless easily extracted.
-    let cred_id = attestation.auth_data.credential_data.unwrap().credential_id;
+    let cred_id = attestation.credential_descriptor.id;
 
     let cred = Fido2Credential {
         credential_id: cred_id,
